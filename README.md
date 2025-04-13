@@ -4,10 +4,10 @@
 
 # Human Oversight for AI Agents
 
-[![Tests](https://github.com/aymenfurter/agents-humanoversight/actions/workflows/tests.yml/badge.svg)](https://github.com/aymenfurter/agents-humanoversight/actions/workflows/tests.yml)
+[![Tests](https://github.com/microsoft/agents-humanoversight/actions/workflows/tests.yml/badge.svg)](https://github.com/microsoft/agents-humanoversight/actions/workflows/tests.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Azure Logic Apps](https://img.shields.io/badge/Azure-Logic%20Apps-0089D6.svg)](https://azure.microsoft.com/services/logic-apps/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/aymenfurter/agents-humanintheloop/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/microsoft/agents-humanintheloop/pulls)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This solution accelerator provides a pattern for integrating human approval steps into autonomous AI agent workflows using Azure Logic Apps and a Python decorator. As AI systems become more powerful and autonomous, implementing human oversight mechanisms becomes critical for safety and compliance.
@@ -143,7 +143,7 @@ python sk_demo.py
 ### Step 2: Clone the Repository and Set Up Environment
 
 ```bash
-git clone https://github.com/aymenfurter/agents-humanoversight.git
+git clone https://github.com/microsoft/agents-humanoversight.git
 cd agents-humanoversight
 ```
 
