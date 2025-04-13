@@ -1,0 +1,44 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      run_integration_tests:
+        description: 'Run integration tests'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.11']
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        cd app
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Run unit tests
+      run: |
+        cd app
+        python -m pytest tests/ -v 
+      env:
+        HO_LOGIC_APP_URL: ${{ secrets.HO_LOGIC_APP_URL || 'https://example.com/mock-url-for-testing' }}
