@@ -5,7 +5,7 @@
 # Human Oversight for AI Agents
 
 [![Tests](https://github.com/microsoft/agents-humanoversight/actions/workflows/tests.yml/badge.svg)](https://github.com/microsoft/agents-humanoversight/actions/workflows/tests.yml)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Azure Logic Apps](https://img.shields.io/badge/Azure-Logic%20Apps-0089D6.svg)](https://azure.microsoft.com/services/logic-apps/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/microsoft/agents-humanintheloop/pulls)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
