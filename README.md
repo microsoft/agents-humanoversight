@@ -53,6 +53,10 @@ This solution provides a flexible, auditable human approval workflow that can be
 5. If approved, the original tool/function executes; if rejected or timed out, a default value is returned
 
 <div align="center">
+  <img src="docs/images/activity-diagram.png" alt="Activity diagram" width="500"/>
+</div>
+
+<div align="center">
   <img src="docs/images/logic-app-workflow.png" alt="Logic App Workflow" width="700"/>
 </div>
 
