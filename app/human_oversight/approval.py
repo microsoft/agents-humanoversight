@@ -10,7 +10,7 @@ sending approval requests, and processing approval responses.
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -96,13 +96,13 @@ def send_approval_request(payload: ApprovalPayload) -> Tuple[bool, Optional[Appr
         )
         response.raise_for_status()
         return True, response.json()
-        
+
     except requests.exceptions.Timeout:
-        logger.error(f"Request to Logic App timed out (ID: {payload['correlationId']}).")
+        logger.error("Request to Logic App timed out (ID: %s).", payload['correlationId'])
         return False, None
-        
-    except requests.exceptions.RequestException as e:
-        logger.error("Error calling Logic App (ID: %s): %s", payload['correlationId'], e)
+
+    except requests.exceptions.RequestException as exception:
+        logger.error("Error calling Logic App (ID: %s): %s", payload['correlationId'], exception)
         return False, None
 
 
@@ -136,13 +136,13 @@ def update_log_with_response(
     if response_data:
         approval_status = response_data.get("status")
         approver = response_data.get("approver", "Unknown")
-        
+
         log_event.update({
             "Status": approval_status,
             "Approver": approver,
             "CompletionTimestamp": get_current_timestamp()
         })
-    
+
     return log_event
 
 
@@ -165,13 +165,13 @@ def request_approval(
         - Response data if successful, None otherwise
         - Updated log event
     """
-    logger.info(f"Requesting approval (ID: {correlation_id})...")
-    
+    logger.info("Requesting approval (ID: %s)...", correlation_id)
+
     success, response_data = send_approval_request(payload)
-    
+
     updated_log = update_log_with_response(log_event, success, response_data)
     log_approval_event(updated_log)
-    
+
     return success, response_data, updated_log
 
 
@@ -204,11 +204,11 @@ def format_approval_result_message(
     """
     approval_status = response_data.get("status")
     approver = response_data.get("approver", "Unknown")
-    
+
     if approval_status == ApprovalStatus.APPROVED.value:
         return f"Approval received (ID: {correlation_id}) from {approver}."
-    
+
     status_message = "rejected" if approval_status == ApprovalStatus.REJECTED.value else "timed out or status unclear"
     approver_info = f" by {approver}" if approval_status == ApprovalStatus.REJECTED.value else f". Status: {approval_status}"
-    
+
     return f"Approval {status_message} (ID: {correlation_id}){approver_info}"

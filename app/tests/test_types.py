@@ -1,8 +1,12 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License.txt in the project root for license information.
 
+"""
+Tests for types.py module in the human_oversight package.
+"""
+
 import unittest
-from human_oversight.types import ApprovalPayload, ApprovalResponse, LogEvent, Parameters
+from human_oversight.types import ApprovalPayload, ApprovalResponse, LogEvent
 
 class TestTypes(unittest.TestCase):
     """Test the type definitions."""

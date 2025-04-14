@@ -21,13 +21,13 @@
 				"python.testing.pytestEnabled": true
 			},
 			"extensions": [
+				"GitHub.copilot",
+				"GitHub.copilot-chat",
 				"ms-python.python",
 				"ms-python.vscode-pylance",
 				"ms-azuretools.vscode-azurecli",
 				"ms-azuretools.vscode-bicep",
-				"ms-vscode.azure-account",
-				"ms-azuretools.vscode-docker",
-				"GitHub.copilot"
+				"ms-azuretools.vscode-docker"
 			]
 		}
 	},

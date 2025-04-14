@@ -24,11 +24,11 @@ class ApprovalStatus(str, Enum):
     REJECTED = "Rejected"
     TIMEOUT = "Timeout"
     ERROR = "Error"
-    
+
     # Execution statuses
     EXECUTED = "Executed"
     EXECUTION_FAILED = "ExecutionFailed"
-    
+
 
 # Backwards compatibility aliases
 STATUS_APPROVED = ApprovalStatus.APPROVED
