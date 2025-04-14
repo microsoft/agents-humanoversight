@@ -44,7 +44,7 @@ def validate_configuration() -> None:
 def execute_function_with_logging(
     func: Callable,
     args: Any,
-    kwargs: Any, 
+    kwargs: Any,
     log_event: LogEvent,
     correlation_id: str
 ) -> Any:
@@ -66,20 +66,20 @@ def execute_function_with_logging(
     """
     try:
         result = func(*args, **kwargs)
-        
+
         log_event.update({
             "Status": ApprovalStatus.EXECUTED.value,
             "ExecutionTimestamp": get_current_timestamp()
         })
         log_approval_event(log_event)
-        
+
         return result
-        
-    except Exception as e:
-        logger.error("Error during function execution after approval (ID: %s): %s", correlation_id, e)
+
+    except Exception as exception:
+        logger.error("Error during function execution after approval (ID: %s): %s", correlation_id, exception)
         log_event.update({
             "Status": ApprovalStatus.EXECUTION_FAILED.value,
-            "Error": str(e),
+            "Error": str(exception),
             "ExecutionTimestamp": get_current_timestamp()
         })
         log_approval_event(log_event)
@@ -112,15 +112,14 @@ def handle_approval_response(
     """
     if not response_data:
         return refusal_return_value
-        
+
     if is_approval_granted(response_data):
         message = format_approval_result_message(response_data, correlation_id)
         logger.info("%s Executing function...", message)
         return execute_function_with_logging(func, args, kwargs, log_event, correlation_id)
-    else:
-        message = format_approval_result_message(response_data, correlation_id)
-        logger.warning(message)
-        return refusal_return_value
+    message = format_approval_result_message(response_data, correlation_id)
+    logger.warning(message)
+    return refusal_return_value
 
 
 def approval_gate(
@@ -149,19 +148,19 @@ def approval_gate(
         ValueError: If HO_LOGIC_APP_URL environment variable is not set
     """
     validate_configuration()
-    
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             correlation_id = str(uuid.uuid4())
-            
+
             # Create a combined parameters dict that includes both positional and keyword args
             parameters = {}
-            
+
             # Add positional args with arg index as key
             sig = inspect.signature(func)
             param_names = list(sig.parameters.keys())
-            
+
             # Map positional args to their parameter names
             for i, arg in enumerate(args):
                 if i < len(param_names):
@@ -169,10 +168,10 @@ def approval_gate(
                     parameters[arg_name] = arg
                 else:
                     parameters[f"arg{i}"] = arg
-            
+
             # Add keyword args
             parameters.update(create_serializable_parameters(kwargs))
-            
+
             log_event = create_initial_log_event(
                 agent_name,
                 correlation_id,
@@ -180,7 +179,7 @@ def approval_gate(
                 parameters
             )
             log_approval_event(log_event)
-            
+
             payload = create_approval_payload(
                 agent_name,
                 action_description,
@@ -188,16 +187,16 @@ def approval_gate(
                 approver_emails,
                 correlation_id
             )
-            
+
             success, response_data, log_event = request_approval(
                 payload,
                 log_event,
                 correlation_id
             )
-            
+
             if not success:
                 return refusal_return_value
-                
+
             return handle_approval_response(
                 response_data,
                 func,
@@ -207,6 +206,6 @@ def approval_gate(
                 correlation_id,
                 refusal_return_value
             )
-                
+
         return cast(F, wrapper)
     return decorator

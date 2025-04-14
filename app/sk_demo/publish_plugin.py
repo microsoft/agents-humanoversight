@@ -1,6 +1,10 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License.txt in the project root for license information.
 
+"""
+GitHub Plugin for Semantic Kernel
+"""
+
 import json
 from semantic_kernel.functions import kernel_function
 
@@ -12,7 +16,7 @@ class PublishPlugin:
     Plugin for publishing content to GitHub Gists.
     Includes human approval flow for sensitive operations.
     """
-    
+
     def __init__(self, agent_name=None, approvers=None, conversation_state=None):
         self.github_plugin = GitHubPlugin()
         self.agent_name = agent_name
@@ -36,7 +40,7 @@ class PublishPlugin:
         """
         approved_function = self._get_approval_gated_function()
         return approved_function(title, content)
-    
+
     def _get_approval_gated_function(self):
         """Create and return the approval-gated function for publishing gists."""
         @approval_gate(
@@ -47,16 +51,16 @@ class PublishPlugin:
         )
         def _publish_gist_with_approval(title: str, content: str) -> str:
             print(f"Executing publish_gist(title='{title}')...")
-            
+
             if self.conversation_state is not None:
                 self.conversation_state["final_report"] = content
-            
+
             gist_url = self.github_plugin.create_gist(title, content, False)
-            
+
             return json.dumps({
                 "status": "success",
                 "message": "Gist published successfully.",
                 "url": gist_url
             })
-        
+
         return _publish_gist_with_approval

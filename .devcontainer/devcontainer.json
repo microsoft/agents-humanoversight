@@ -17,20 +17,26 @@
 				"python.linting.enabled": true,
 				"python.linting.pylintEnabled": true,
 				"python.formatting.provider": "black",
-				"python.testing.unittestEnabled": false,
-				"python.testing.pytestEnabled": true
+				"python.testing.unittestEnabled": true,
+				"python.testing.pytestEnabled": false
 			},
 			"extensions": [
-				"ms-python.python",
-				"ms-python.vscode-pylance",
+				"GitHub.copilot",
+                "GitHub.copilot-chat",
 				"ms-azuretools.vscode-azurecli",
 				"ms-azuretools.vscode-bicep",
-				"ms-vscode.azure-account",
 				"ms-azuretools.vscode-docker",
-				"GitHub.copilot"
+				"ms-python.pylint",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"tamasfe.even-better-toml"
 			]
 		}
 	},
+
+	"containerEnv": {
+        "PYTHONPATH": "${containerWorkspaceFolder}/app"
+    },
 
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached"

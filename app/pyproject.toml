@@ -1,0 +1,10 @@
+[tool.pylint.FORMAT]
+indent-string = "    "
+max-line-length = 120
+
+[tool.pylint.MASTER]
+disable = [
+    "line-too-long",
+    "too-few-public-methods",
+    "too-many-arguments"
+]

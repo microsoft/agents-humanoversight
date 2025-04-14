@@ -1,4 +1,4 @@
-requests
-python-dotenv
-openai
-semantic-kernel
+requests==2.32.3
+python-dotenv==1.1.0
+openai==1.73.0
+semantic-kernel==1.28.0

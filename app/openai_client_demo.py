@@ -1,4 +1,12 @@
-import os, json
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License.txt in the project root for license information.
+
+"""
+OpenAI client demo.
+"""
+
+import json
+import os
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from human_oversight import approval_gate
@@ -6,7 +14,8 @@ from human_oversight import approval_gate
 load_dotenv()
 AGENT_NAME = "UserManagerAgent"
 APPROVER_EMAILS_STR = os.getenv("APPROVER_EMAILS")
-if not APPROVER_EMAILS_STR: raise ValueError("APPROVER_EMAILS environment variable must be set (comma-separated).")
+if not APPROVER_EMAILS_STR:
+    raise ValueError("APPROVER_EMAILS environment variable must be set (comma-separated).")
 APPROVERS = [e.strip() for e in APPROVER_EMAILS_STR.split(',')]
 
 try:
@@ -16,9 +25,9 @@ try:
         azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     )
     print("Azure OpenAI client initialized.")
-except Exception as e:
+except Exception as e:  #pylint: disable=broad-exception-caught
     print(f"Warning: Failed to initialize OpenAI client: {e}. OpenAI calls will be skipped.")
-    client = None
+    client = None  #pylint: disable=invalid-name
 
 USERS = {
     "1": {"id": "1", "name": "Alice", "email": "alice@example.com"},
@@ -27,8 +36,13 @@ USERS = {
 }
 
 def list_users(location_filter=None):
+    """
+    This method lists users.
+    """
+
     print(f"Executing list_users(location_filter='{location_filter}')...")
-    if not location_filter: return json.dumps(list(USERS.values()))
+    if not location_filter:
+        return json.dumps(list(USERS.values()))
     return json.dumps([u for u in USERS.values() if u["email"].endswith(f"@{location_filter}")])
 
 @approval_gate(
@@ -38,14 +52,18 @@ def list_users(location_filter=None):
     refusal_return_value="DENIED: User deletion was not approved."
 )
 def delete_user(user_id):
+    """
+    This method delete a specific user.
+    """
+
     print(f"Executing delete_user(user_id='{user_id}')...")
     if user_id in USERS:
-        u = USERS.pop(user_id)
-        print(f"Successfully deleted user: {u['name']} (ID: {user_id})")
+        user = USERS.pop(user_id)
+        print(f"Successfully deleted user: {user['name']} (ID: {user_id})")
         return json.dumps({
             "status": "success",
             "message": f"User {user_id} deleted.",
-            "deleted_user": u
+            "deleted_user": user
         })
     print(f"User ID '{user_id}' not found.")
     return json.dumps({"status": "error", "message": f"User {user_id} not found."})
@@ -90,42 +108,47 @@ tools = [
 funcs = {"list_users": list_users, "delete_user": delete_user}
 
 def run_conversation(prompt, msgs=None):
+    """
+    This method runs a conversation.
+    """
+
     if not client:
         print("OpenAI client not available. Skipping conversation.")
         if "delete user 1" in prompt.lower():
             print("\n--- Simulating direct call to delete_user(user_id='1') ---")
-            r=delete_user(user_id="1")
-            print(f"Result of delete_user: {r}")
+            result=delete_user(user_id="1")
+            print(f"Result of delete_user: {result}")
         elif "list users" in prompt.lower():
             print("\n--- Simulating direct call to list_users() ---")
-            r=list_users()
-            print(f"Result of list_users: {r}")
-        return
-    if msgs is None: msgs=[{"role":"system","content":"You are a helpful assistant managing users."}]
+            result=list_users()
+            print(f"Result of list_users: {result}")
+        return None
+    if msgs is None:
+        msgs=[{"role":"system","content":"You are a helpful assistant managing users."}]
     msgs.append({"role":"user","content":prompt})
     print(f"\n--- Running conversation for prompt: '{prompt}' ---")
     try:
         resp=client.chat.completions.create(model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME","gpt-4o"),messages=msgs,tools=tools,tool_choice="auto")
         msg=resp.choices[0].message
-        tc=msg.tool_calls
+        tc=msg.tool_calls  #pylint: disable=invalid-name
         if tc:
             msgs.append(msg)
-            for c in tc:
-                fn=c.function.name
-                f=funcs.get(fn)
-                if not f:
-                    print(f"Error: Function '{fn}' not found.")
+            for c in tc:  #pylint: disable=invalid-name
+                function_name=c.function.name
+                function=funcs.get(function_name)
+                if not function:
+                    print(f"Error: Function '{function_name}' not found.")
                     continue
                 args=json.loads(c.function.arguments)
-                print(f"LLM wants to call: {fn}({args})")
-                fr=f(**args)
-                print(f"Function response: {fr}")
-                msgs.append({"tool_call_id":c.id,"role":"tool","name":fn,"content":fr})
+                print(f"LLM wants to call: {function_name}({args})")
+                function_result=function(**args)
+                print(f"Function response: {function_result}")
+                msgs.append({"tool_call_id":c.id,"role":"tool","name":function_name,"content":function_result})
         else:
             print(f"LLM response: {msg.content}")
             msgs.append(msg)
-    except Exception as e:
-        print(f"An error occurred during the OpenAI API call: {e}")
+    except Exception as exception:  #pylint: disable=broad-except
+        print(f"An error occurred during the OpenAI API call: {exception}")
     return msgs
 
 if __name__=="__main__":
@@ -133,11 +156,11 @@ if __name__=="__main__":
     print(f"Agent Name: {AGENT_NAME}")
     print(f"Approvers: {APPROVERS}")
     print(f"Mock Users: {USERS}")
-    h=None
+    human_oversight_agent_demo=None  #pylint: disable=invalid-name
     print("\n--- Scenario 1: List all users ---")
-    h=run_conversation("List all users",h)
+    human_oversight_agent_demo=run_conversation("List all users",human_oversight_agent_demo)
     print("\n--- Scenario 2: Delete user with ID 1 ---")
     print("This will trigger the Human Oversight Approval Gate. Check the approver's inbox.")
-    h=run_conversation("Please delete the user with ID 1",h)
+    human_oversight_agent_demo=run_conversation("Please delete the user with ID 1",human_oversight_agent_demo)
     print("\n--- Demo Finished ---")
     print(f"Remaining Mock Users: {USERS}")

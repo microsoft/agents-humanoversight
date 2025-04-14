@@ -1,3 +1,12 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License.txt in the project root for license information.
+
+"""
+Multi-agent system that uses GitHub Search API to answer code-related queries.
+The system consists of a Researcher agent that searches GitHub for information
+and a Critic agent that reviews the report and provides feedback.
+"""
+
 import asyncio
 import os
 from dotenv import load_dotenv
@@ -15,13 +24,6 @@ from semantic_kernel.functions import KernelFunctionFromPrompt
 
 from sk_demo.github_api_plugin import GitHubPlugin
 from sk_demo.publish_plugin import PublishPlugin
-from human_oversight import approval_gate
-
-"""
-Multi-agent system that uses GitHub Search API to answer code-related queries.
-The system consists of a Researcher agent that searches GitHub for information
-and a Critic agent that reviews the report and provides feedback.
-"""
 
 # Define agent names
 RESEARCHER_NAME = "Researcher"
@@ -32,7 +34,7 @@ PUBLISHER_NAME = "Publisher"
 load_dotenv(override=True)
 AGENT_NAME = "GitHubSearchAgent"
 APPROVER_EMAILS_STR = os.getenv("APPROVER_EMAILS")
-if not APPROVER_EMAILS_STR: 
+if not APPROVER_EMAILS_STR:
     raise ValueError("APPROVER_EMAILS environment variable must be set (comma-separated).")
 APPROVERS = [e.strip() for e in APPROVER_EMAILS_STR.split(',')]
 
@@ -60,23 +62,27 @@ def create_kernel() -> Kernel:
         async_client=chat_client
     )
     kernel.add_service(chat_completion_service)
-    
+
     # Add the GitHub plugin
     kernel.add_plugin(GitHubPlugin(), plugin_name="github")
-    
+
     # Add the Publish plugin with required parameters
     kernel.add_plugin(
         PublishPlugin(
             agent_name=AGENT_NAME,
             approvers=APPROVERS,
             conversation_state=conversation_state
-        ), 
+        ),
         plugin_name="publish"
     )
-    
+
     return kernel
 
-async def main():
+async def main():  #pylint: disable=too-many-branches,too-many-statements
+    """
+    Main function.
+    """
+
     # Create a kernel instance
     kernel = create_kernel()
 
@@ -123,7 +129,7 @@ Be constructive but thorough in your criticism. When you're satisfied with the r
 end your feedback with the phrase "REPORT APPROVED FOR PUBLICATION".
 """,
     )
-    
+
     # Create the Publisher agent
     agent_publisher = ChatCompletionAgent(
         kernel=kernel,
@@ -174,7 +180,7 @@ RESPONSE:
     # Define a termination function where the Publisher signals completion
     termination_function = KernelFunctionFromPrompt(
         function_name="termination",
-        prompt=f"""
+        prompt="""
 Examine the RESPONSE and determine whether the conversation should terminate.
 If the Publisher has completed preparation (containing "READY TO PUBLISH"), respond with "terminate".
 Otherwise, respond with "continue".
@@ -207,13 +213,13 @@ RESPONSE:
         ),
     )
 
-    print(f"Starting GitHub Search Agent Demo...")
+    print("Starting GitHub Search Agent Demo...")
     print(f"Agent Name: {AGENT_NAME}")
     print(f"Approvers: {APPROVERS}")
     print("\n--- Please enter a code-related query ---")
-    
+
     is_complete = False
-    
+
     while not is_complete:
         print()
         if not conversation_state["query"]:
@@ -223,7 +229,7 @@ RESPONSE:
             user_input = input("Press Enter to continue or 'exit' to quit > ").strip()
             if not user_input:
                 user_input = "Continue processing the query."
-        
+
         if not user_input:
             continue
 
@@ -247,16 +253,16 @@ RESPONSE:
             async for response in chat.invoke():
                 if response is None or not response.name:
                     continue
-                
+
                 print()
                 print(f"# {response.name.upper()}:\n{response.content}")
-                
+
                 if response.name == PUBLISHER_NAME and "READY TO PUBLISH" in response.content:
                     is_complete = True
                     break
-            
-        except Exception as e:
-            print(f"Error during chat invocation: {e}")
+
+        except Exception as exception:  #pylint: disable=broad-exception-caught
+            print(f"Error during chat invocation: {exception}")
 
         if is_complete:
             break
@@ -265,7 +271,7 @@ RESPONSE:
 
     print("\n--- Demo Finished ---")
     if conversation_state["final_report"]:
-        print(f"Final Report Published Successfully")
+        print("Final Report Published Successfully")
     else:
         print("No final report was generated.")
 
