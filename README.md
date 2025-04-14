@@ -27,10 +27,11 @@ This solution accelerator provides a pattern for integrating human approval step
   - [Authorize Office 365](#step-4-authorize-office-365-connection)
   - [Configure Python App](#step-5-configure-and-run-the-python-application)
 - [Approval Workflow Experience](#approval-workflow-experience)
+- [Reporting](#reporting)
 - [Customizing the Solution](#customizing-the-solution)
 - [Security Considerations](#security-considerations)
 - [Contributing](#contributing)
-- [License](#license)
+
 
 ## Why Human Oversight for AI Systems?
 
@@ -254,6 +255,15 @@ You can specify multiple approvers as a comma-separated list in the APPROVERS_EM
     refusal_return_value={"status": "denied"}
 )
 ```
+
+## Reporting
+A Power BI dashboard is included to visualize approval data and monitor agent activity.
+You can open [`docs/approvaldashboard.pbix`](docs/approvaldashboard.pbix) in Power BI Desktop.  
+> **Note:** You must update the data source connection details using **Transform Data > Advanced Editor** to match your storage account and table configuration.
+
+<div align="center">
+  <img src="docs/images/powerbi.png" alt="Approval Email" width="600"/>
+</div>
 
 ## Security Considerations
 
