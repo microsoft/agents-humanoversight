@@ -273,6 +273,38 @@ You can open [`docs/approvaldashboard.pbix`](docs/approvaldashboard.pbix) in Pow
 - Add Azure AD authentication for additional security
 - Monitor and audit approval logs regularly
 
+## Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/curia-damiano">
+        <img src="https://github.com/curia-damiano.png?size=100" alt="Damiano Curia"/><br />
+        <sub><b>Damiano Curia</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/aymenfurter">
+        <img src="https://github.com/aymenfurter.png?size=100" alt="Aymen Furter"/><br />
+        <sub><b>Aymen Furter</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/RichDCs">
+        <img src="https://github.com/RichDCs.png?size=100" alt="Richard Lagrange"/><br />
+        <sub><b>Richard Lagrange</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/yimingwang123">
+        <img src="https://github.com/yimingwang123.png?size=100" alt="Yimi Wang"/><br />
+        <sub><b>Yimi Wang</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+
+
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
