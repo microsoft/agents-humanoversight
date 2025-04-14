@@ -21,8 +21,8 @@ class TestDecorator(unittest.TestCase):
         self.assertIn("HO_LOGIC_APP_URL environment variable must be set", str(context.exception))
 
     @patch('human_oversight.logging_utils.get_current_timestamp', return_value="2025-04-13T12:00:00.000000Z")
-    @patch('human_oversight.decorator.log_approval_event')  # Corrected patch target
-    def test_execute_function_with_logging_success(self, mock_log_event):
+    @patch('human_oversight.decorator.log_approval_event')
+    def test_execute_function_with_logging_success(self, mock_log_event, mock_timestamp):
         """Test successful function execution with logging."""
         def sample_function(x):  #pylint: disable=invalid-name
             return x * 2
@@ -38,8 +38,8 @@ class TestDecorator(unittest.TestCase):
         mock_log_event.assert_called_once()
 
     @patch('human_oversight.logging_utils.get_current_timestamp', return_value="2025-04-13T12:00:00.000000Z")
-    @patch('human_oversight.decorator.log_approval_event')  # Corrected patch target
-    def test_execute_function_with_logging_failure(self, mock_log_event):
+    @patch('human_oversight.decorator.log_approval_event')
+    def test_execute_function_with_logging_failure(self, mock_log_event, mock_timestamp):
         """Test failed function execution with logging."""
         def sample_function(x):  #pylint: disable=invalid-name
             raise ValueError("Test error")

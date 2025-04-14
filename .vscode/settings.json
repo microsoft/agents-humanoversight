@@ -1,5 +1,0 @@
-{
-    "pylint.args": [
-        "--rcfile=app/.pylintrc"
-    ],
-}
