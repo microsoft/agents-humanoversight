@@ -136,10 +136,6 @@ class GitHubPlugin:
         # If we get here, we couldn't find the file on any branch
         return f"[Could not retrieve content for {repo}/{path}]"
 
-    @kernel_function(
-        description="Create a GitHub Gist with the provided content",
-        name="create_gist"
-    )
     def create_gist(
         self,
         description: Annotated[str, "The description/title for the GitHub Gist"],
@@ -147,8 +143,6 @@ class GitHubPlugin:
         public: Annotated[bool, "Whether the gist should be public"] = False
     ) -> Annotated[str, "The URL of the created Gist or error message"]:
         """Create a GitHub Gist with the provided content."""
-        print(f"Executing create_gist(description='{description}', public={public})...")
-
         if not self.token:
             return "Error: GitHub token is required to create gists."
 

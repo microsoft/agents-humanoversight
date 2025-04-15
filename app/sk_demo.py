@@ -8,8 +8,10 @@ and a Critic agent that reviews the report and provides feedback.
 """
 
 import asyncio
+import logging
 import os
 from dotenv import load_dotenv
+from typing import List
 
 from openai import AsyncAzureOpenAI
 from semantic_kernel import Kernel
@@ -25,74 +27,26 @@ from semantic_kernel.functions import KernelFunctionFromPrompt
 from sk_demo.github_api_plugin import GitHubPlugin
 from sk_demo.publish_plugin import PublishPlugin
 
+# Logging Setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(levelname)s] %(name)s: %(message)s")
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
 # Define agent names
 RESEARCHER_NAME = "Researcher"
 CRITIC_NAME = "Critic"
 PUBLISHER_NAME = "Publisher"
-
-# Initialize environment variables
-load_dotenv(override=True)
 AGENT_NAME = "GitHubSearchAgent"
-APPROVER_EMAILS_STR = os.getenv("APPROVER_EMAILS")
-if not APPROVER_EMAILS_STR:
-    raise ValueError("APPROVER_EMAILS environment variable must be set (comma-separated).")
-APPROVERS = [e.strip() for e in APPROVER_EMAILS_STR.split(',')]
 
-# Conversation state to track searches, reports, etc.
-conversation_state = {
-    "query": "",
-    "searches": [],
-    "report": "",
-    "feedback": [],
-    "final_report": ""
-}
 
-def create_kernel() -> Kernel:
-    """Creates a Kernel instance with Azure OpenAI ChatCompletion service."""
-    kernel = Kernel()
-
-    # Configure Azure OpenAI service
-    chat_client = AsyncAzureOpenAI(
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
-    )
-    chat_completion_service = OpenAIChatCompletion(
-        ai_model_id=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
-        async_client=chat_client
-    )
-    kernel.add_service(chat_completion_service)
-
-    # Add the GitHub plugin
-    kernel.add_plugin(GitHubPlugin(), plugin_name="github")
-
-    # Add the Publish plugin with required parameters
-    kernel.add_plugin(
-        PublishPlugin(
-            agent_name=AGENT_NAME,
-            approvers=APPROVERS,
-            conversation_state=conversation_state
-        ),
-        plugin_name="publish"
-    )
-
-    return kernel
-
-async def main():  #pylint: disable=too-many-branches,too-many-statements
-    """
-    Main function.
-    """
-
-    # Create a kernel instance
-    kernel = create_kernel()
-
-    # Create the Researcher agent
-    agent_researcher = ChatCompletionAgent(
-        kernel=kernel,
-        name=RESEARCHER_NAME,
-        instructions="""
+RESEARCHER_INSTRUCTIONS = """
 You are a Researcher agent that uses GitHub Search API to find information about code-related queries. 
-Your goal is to search for relevant information on GitHub to help answer user questions.
+Your goal is to search for relevant information on GitHub to help answer user questions. 
 
 Process:
 1. Analyze the user's query to identify key search terms.
@@ -102,15 +56,10 @@ Process:
 5. When you receive feedback from the Critic, conduct additional searches to address gaps.
 
 Be thorough, methodical, and focus on providing accurate technical information from real GitHub repositories.
-""",
-    )
+"""
 
-    # Create the Critic agent
-    agent_critic = ChatCompletionAgent(
-        kernel=kernel,
-        name=CRITIC_NAME,
-        instructions="""
-You are a Critic agent that reviews reports compiled by the Researcher agent.
+CRITIC_INSTRUCTIONS = """
+You are a Critic agent that reviews reports compiled by the Researcher agent. 
 Your goal is to ensure the report is comprehensive, accurate, and addresses the user's query completely.
 
 Process:
@@ -127,14 +76,9 @@ Process:
 
 Be constructive but thorough in your criticism. When you're satisfied with the report after revisions,
 end your feedback with the phrase "REPORT APPROVED FOR PUBLICATION".
-""",
-    )
+"""
 
-    # Create the Publisher agent
-    agent_publisher = ChatCompletionAgent(
-        kernel=kernel,
-        name=PUBLISHER_NAME,
-        instructions="""
+PUBLISHER_INSTRUCTIONS = """
 You are a Publisher agent that prepares approved reports for publication.
 Your role is to take the final report approved by the Critic and prepare it for publishing as a GitHub Gist.
 
@@ -149,13 +93,9 @@ Example usage:
 publish.publish_gist(title="Informative Title", content="Full report content")
 
 After calling the function, end your message with "READY TO PUBLISH" to indicate completion.
-""",
-    )
+"""
 
-    # Define a selection function to determine which agent should take the next turn
-    selection_function = KernelFunctionFromPrompt(
-        function_name="selection",
-        prompt=f"""
+SELECTION_PROMPT = f"""
 Examine the provided RESPONSE and choose the next participant.
 State only the name of the chosen participant without explanation.
 Never choose the participant named in the RESPONSE.
@@ -174,20 +114,143 @@ Rules:
 
 RESPONSE:
 {{{{$lastmessage}}}}
-""",
-    )
+"""
 
-    # Define a termination function where the Publisher signals completion
-    termination_function = KernelFunctionFromPrompt(
-        function_name="termination",
-        prompt="""
+TERMINATION_PROMPT = """
 Examine the RESPONSE and determine whether the conversation should terminate.
 If the Publisher has completed preparation (containing "READY TO PUBLISH"), respond with "terminate".
 Otherwise, respond with "continue".
 
 RESPONSE:
 {{{{$lastmessage}}}}
-""",
+"""
+
+
+# Initialize environment variables
+load_dotenv(override=True)
+APPROVER_EMAILS_STR = os.getenv("APPROVER_EMAILS")
+if not APPROVER_EMAILS_STR:
+    raise ValueError("APPROVER_EMAILS environment variable must be set (comma-separated).")
+APPROVERS = [e.strip() for e in APPROVER_EMAILS_STR.split(',')]
+
+# Conversation state to track searches, reports, etc.
+class ConversationState:
+    """
+    Holds the state for a single conversation, including user query,
+    searches made, final report, etc.
+    """
+    def __init__(self) -> None:
+        self.query: str = ""
+        self.searches: List[str] = []
+        self.report: str = ""
+        self.feedback: List[str] = []
+        self.final_report: str = ""
+
+# Global state instance
+conversation_state = ConversationState()
+
+def validate_env_vars() -> List[str]:
+    """
+    Validates required environment variables and returns a list of approved emails.
+    Raises ValueError if missing critical values.
+    """
+    azure_openai_key = os.getenv("AZURE_OPENAI_API_KEY")
+    azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    if not azure_openai_key:
+        raise ValueError("AZURE_OPENAI_API_KEY environment variable must be set.")
+    if not azure_openai_endpoint:
+        raise ValueError("AZURE_OPENAI_ENDPOINT environment variable must be set.")
+
+    approver_emails_str = os.getenv("APPROVER_EMAILS")
+    if not approver_emails_str:
+        raise ValueError("APPROVER_EMAILS environment variable must be set (comma-separated).")
+
+    approvers = [e.strip() for e in approver_emails_str.split(',') if e.strip()]
+    if not approvers:
+        raise ValueError("No valid approvers found in APPROVER_EMAILS.")
+
+    return approvers
+
+
+def create_kernel() -> Kernel:
+    """Creates a Kernel instance with Azure OpenAI ChatCompletion service."""
+    kernel = Kernel()
+    
+    # Use validate_env_vars to validate environment variables
+    validated_approvers = validate_env_vars()
+    
+    # Check if global APPROVERS needs to be updated
+    global APPROVERS
+    if validated_approvers:
+        APPROVERS = validated_approvers
+    
+    # Configure Azure OpenAI service
+    chat_client = AsyncAzureOpenAI(
+        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15"),
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
+    )
+    chat_completion_service = OpenAIChatCompletion(
+        ai_model_id=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+        async_client=chat_client
+    )
+    kernel.add_service(chat_completion_service)
+
+    return kernel
+
+
+def init_agents(kernel: Kernel):
+    """
+    Creates three ChatCompletionAgent instances for Researcher, Critic, and Publisher.
+    Returns them as a tuple.
+    """
+
+    
+    agent_researcher = ChatCompletionAgent(
+        kernel=kernel,
+        name=RESEARCHER_NAME,
+        instructions=RESEARCHER_INSTRUCTIONS,
+        plugins=[GitHubPlugin()]
+    )
+
+    agent_critic = ChatCompletionAgent(
+        kernel=kernel,
+        name=CRITIC_NAME,
+        instructions=CRITIC_INSTRUCTIONS,
+    )
+
+    agent_publisher = ChatCompletionAgent(
+        kernel=kernel,
+        name=PUBLISHER_NAME,
+        instructions=PUBLISHER_INSTRUCTIONS,
+        plugins=[
+            PublishPlugin(
+                agent_name=AGENT_NAME,
+                approvers=APPROVERS,
+                conversation_state=conversation_state
+            )
+        ]
+    )
+
+    return agent_researcher, agent_critic, agent_publisher
+
+def build_agent_group_chat(
+    kernel: Kernel,
+    agent_researcher: ChatCompletionAgent,
+    agent_critic: ChatCompletionAgent,
+    agent_publisher: ChatCompletionAgent
+) -> AgentGroupChat:
+    """
+    Constructs the AgentGroupChat with selection and termination strategies.
+    """
+    selection_function = KernelFunctionFromPrompt(
+        function_name="selection",
+        prompt=SELECTION_PROMPT,
+    )
+
+    termination_function = KernelFunctionFromPrompt(
+        function_name="termination",
+        prompt=TERMINATION_PROMPT,
     )
 
     history_reducer = ChatHistoryTruncationReducer(target_count=10)
@@ -198,7 +261,7 @@ RESPONSE:
             initial_agent=agent_researcher,
             function=selection_function,
             kernel=kernel,
-            result_parser=lambda result: str(result.value[0]).strip() if result.value[0] is not None else RESEARCHER_NAME,
+            result_parser=lambda result: str(result.value[0]).strip() if result.value[0] else RESEARCHER_NAME,
             history_variable_name="lastmessage",
             history_reducer=history_reducer,
         ),
@@ -212,39 +275,43 @@ RESPONSE:
             history_reducer=history_reducer,
         ),
     )
+    return chat
 
-    print("Starting GitHub Search Agent Demo...")
-    print(f"Agent Name: {AGENT_NAME}")
-    print(f"Approvers: {APPROVERS}")
-    print("\n--- Please enter a code-related query ---")
+async def run_conversation_loop(chat: AgentGroupChat) -> None:
+    """
+    Runs the main conversation loop, prompting for user input,
+    invoking the multi-agent pipeline, and printing results.
+    """
+    logger.info("Starting GitHub Search Agent Demo...")
+    logger.info(f"Agent Name: {AGENT_NAME}")
+
+    # Print approvers from environment
+    approver_emails_str = os.getenv("APPROVER_EMAILS")
+    logger.info(f"Approvers: {approver_emails_str}")
+
+    logger.info("Please enter a code-related query or type 'exit' to quit.")
 
     is_complete = False
 
     while not is_complete:
         print()
-        if not conversation_state["query"]:
+        if not conversation_state.query:
             user_input = input("Query > ").strip()
-            conversation_state["query"] = user_input
+            conversation_state.query = user_input
         else:
             user_input = input("Press Enter to continue or 'exit' to quit > ").strip()
             if not user_input:
                 user_input = "Continue processing the query."
 
-        if not user_input:
-            continue
-
         if user_input.lower() == "exit":
-            is_complete = True
+            logger.info("Exiting conversation loop.")
             break
 
         if user_input.lower() == "reset":
             await chat.reset()
-            conversation_state["query"] = ""
-            conversation_state["searches"] = []
-            conversation_state["report"] = ""
-            conversation_state["feedback"] = []
-            conversation_state["final_report"] = ""
-            print("[Conversation has been reset]")
+            logger.info("[Conversation has been reset]")
+            # Reset conversation state
+            conversation_state.__init__()  # re-init fields
             continue
 
         await chat.add_chat_message(message=user_input)
@@ -257,23 +324,36 @@ RESPONSE:
                 print()
                 print(f"# {response.name.upper()}:\n{response.content}")
 
+                # If the Publisher agent says "READY TO PUBLISH", end the loop
                 if response.name == PUBLISHER_NAME and "READY TO PUBLISH" in response.content:
                     is_complete = True
                     break
 
-        except Exception as exception:  #pylint: disable=broad-exception-caught
-            print(f"Error during chat invocation: {exception}")
-
-        if is_complete:
+        except Exception as exc:
+            logger.exception(f"Error during chat invocation: {exc}")
             break
 
-        chat.is_complete = False
-
+    # Final summary
     print("\n--- Demo Finished ---")
-    if conversation_state["final_report"]:
-        print("Final Report Published Successfully")
+    if conversation_state.final_report:
+        logger.info("Final Report Published Successfully.")
     else:
-        print("No final report was generated.")
+        logger.info("No final report was generated.")
+
+async def main() -> None:
+    """
+    Orchestrates the entire flow:
+    1. Loads environment variables
+    2. Creates a Kernel
+    3. Initializes agents
+    4. Builds an AgentGroupChat
+    5. Runs the conversation loop
+    """
+    load_dotenv(override=True)
+    kernel = create_kernel()
+    agent_researcher, agent_critic, agent_publisher = init_agents(kernel)
+    chat = build_agent_group_chat(kernel, agent_researcher, agent_critic, agent_publisher)
+    await run_conversation_loop(chat)
 
 if __name__ == "__main__":
     asyncio.run(main())

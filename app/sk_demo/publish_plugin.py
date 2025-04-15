@@ -53,7 +53,7 @@ class PublishPlugin:
             print(f"Executing publish_gist(title='{title}')...")
 
             if self.conversation_state is not None:
-                self.conversation_state["final_report"] = content
+                self.conversation_state.final_report = content
 
             gist_url = self.github_plugin.create_gist(title, content, False)
 
