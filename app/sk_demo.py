@@ -46,7 +46,7 @@ AGENT_NAME = "GitHubSearchAgent"
 
 RESEARCHER_INSTRUCTIONS = """
 You are a Researcher agent that uses GitHub Search API to find information about code-related queries. 
-Your goal is to search for relevant information on GitHub to help answer user questions.
+Your goal is to search for relevant information on GitHub to help answer user questions. 
 
 Process:
 1. Analyze the user's query to identify key search terms.
@@ -59,7 +59,7 @@ Be thorough, methodical, and focus on providing accurate technical information f
 """
 
 CRITIC_INSTRUCTIONS = """
-You are a Critic agent that reviews reports compiled by the Researcher agent.
+You are a Critic agent that reviews reports compiled by the Researcher agent. 
 Your goal is to ensure the report is comprehensive, accurate, and addresses the user's query completely.
 
 Process:
@@ -175,7 +175,15 @@ def validate_env_vars() -> List[str]:
 def create_kernel() -> Kernel:
     """Creates a Kernel instance with Azure OpenAI ChatCompletion service."""
     kernel = Kernel()
-
+    
+    # Use validate_env_vars to validate environment variables
+    validated_approvers = validate_env_vars()
+    
+    # Check if global APPROVERS needs to be updated
+    global APPROVERS
+    if validated_approvers:
+        APPROVERS = validated_approvers
+    
     # Configure Azure OpenAI service
     chat_client = AsyncAzureOpenAI(
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -188,19 +196,6 @@ def create_kernel() -> Kernel:
     )
     kernel.add_service(chat_completion_service)
 
-    # Add the GitHub plugin
-    kernel.add_plugin(GitHubPlugin(), plugin_name="github")
-
-    # Add the Publish plugin with required parameters
-    kernel.add_plugin(
-        PublishPlugin(
-            agent_name=AGENT_NAME,
-            approvers=APPROVERS,
-            conversation_state=conversation_state
-        ),
-        plugin_name="publish"
-    )
-
     return kernel
 
 
@@ -209,10 +204,13 @@ def init_agents(kernel: Kernel):
     Creates three ChatCompletionAgent instances for Researcher, Critic, and Publisher.
     Returns them as a tuple.
     """
+
+    
     agent_researcher = ChatCompletionAgent(
         kernel=kernel,
         name=RESEARCHER_NAME,
         instructions=RESEARCHER_INSTRUCTIONS,
+        plugins=[GitHubPlugin()]
     )
 
     agent_critic = ChatCompletionAgent(
@@ -225,6 +223,13 @@ def init_agents(kernel: Kernel):
         kernel=kernel,
         name=PUBLISHER_NAME,
         instructions=PUBLISHER_INSTRUCTIONS,
+        plugins=[
+            PublishPlugin(
+                agent_name=AGENT_NAME,
+                approvers=APPROVERS,
+                conversation_state=conversation_state
+            )
+        ]
     )
 
     return agent_researcher, agent_critic, agent_publisher
